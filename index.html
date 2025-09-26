@@ -2,13 +2,13 @@
 <html lang="pt-BR">
 <head>
         <!-- Supabase -->
-        <script src="https://unpkg.com/@supabase/supabase-js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script>
+            let supabaseClient;
+            
             // Inicialização do Supabase
-            const supabaseUrl = 'https://acyxzqbcvbhhoadxwfhj.supabase.co'
-            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjeXh6cWJjdmJoaG9hZHh3ZmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5Mjg2NTIsImV4cCI6MjA3NDUwNDY1Mn0.37vQ-Jc6fHXl2EoAublmCYKK3Y96nRR7dcZrck9rkEQ'
-            const { createClient } = supabase
-            const supabase = createClient(supabaseUrl, supabaseKey)
+            const supabaseUrl = 'https://acyxzqbcvbhhoadxwfhj.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjeXh6cWJjdmJoaG9hZHh3ZmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5Mjg2NTIsImV4cCI6MjA3NDUwNDY1Mn0.37vQ-Jc6fHXl2EoAublmCYKK3Y96nRR7dcZrck9rkEQ';
             
             // Usuário único, sem autenticação
             const userId = "meu_unico_usuario";
@@ -972,10 +972,18 @@
             return window.ridesCache?.[dateKey] || { ida: null, volta: null };
         }
 
+        async function initSupabase() {
+            if (!supabaseClient) {
+                supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+            }
+            return supabaseClient;
+        }
+
         async function saveRidesForDate(dateKey, rides) {
+            const db = await initSupabase();
             const monthKey = formatMonthKey(currentDate);
             // Buscar dados existentes primeiro
-            const { data: existingData } = await supabase
+            const { data: existingData } = await db
                 .from('caronas')
                 .select('rides_data')
                 .eq('user_id', userId)
@@ -986,7 +994,7 @@
             ridesData[dateKey] = rides;
             
             // Atualizar ou inserir dados
-            const { error } = await supabase
+            const { error } = await db
                 .from('caronas')
                 .upsert({
                     user_id: userId,
@@ -998,6 +1006,48 @@
                 console.error('Erro ao salvar dados:', error);
                 throw error;
             }
+        }
+
+        async function loadMonthData() {
+            const db = await initSupabase();
+            const monthKey = formatMonthKey(currentDate);
+            const { data, error } = await db
+                .from('caronas')
+                .select('rides_data')
+                .eq('user_id', userId)
+                .eq('month_key', monthKey)
+                .single();
+                
+            if (error && error.code !== 'PGRST116') { // Código para "não encontrado"
+                console.error('Erro ao carregar dados:', error);
+                throw error;
+            }
+            
+            window.ridesCache = data?.rides_data || {};
+        }
+
+        // Reinicia o mês atual
+        async function resetMonth() {
+            const db = await initSupabase();
+            const monthKey = formatMonthKey(currentDate);
+            const { error } = await db
+                .from('caronas')
+                .delete()
+                .eq('user_id', userId)
+                .eq('month_key', monthKey);
+                
+            if (error) {
+                console.error('Erro ao reiniciar mês:', error);
+                throw error;
+            }
+            
+            selectedDay = null;
+            await loadMonthData();
+            updateSelectedDayInfo();
+            updateCalendar();
+            updateSummary();
+            updateHistory();
+            showNotification('Mês reiniciado com sucesso!');
         }
 
         async function loadMonthData() {
