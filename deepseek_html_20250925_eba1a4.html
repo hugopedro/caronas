@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+        <!-- Firebase App (core) -->
+        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+        <!-- Firestore -->
+        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+        <script>
+            // Substitua pelos dados do seu projeto Firebase:
+            const firebaseConfig = {
+                apiKey: "SUA_API_KEY",
+                authDomain: "SEU_DOMINIO.firebaseapp.com",
+                projectId: "SEU_PROJECT_ID",
+                storageBucket: "SEU_PROJECT_ID.appspot.com",
+                messagingSenderId: "SEU_SENDER_ID",
+                appId: "SEU_APP_ID"
+            };
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            // Usuário único, sem autenticação
+            const userId = "meu_unico_usuario";
+        </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Caronas</title>
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --container-bg: white;
+            --text-color: #333;
+            --header-color: #2c3e50;
+            --summary-bg: #e8f4f8;
+            --summary-header: #2980b9;
+            --day-bg: white;
+            --day-border: #ddd;
+            --day-hover: #f0f0f0;
+            --selected-bg: #d4edda;
+            --selected-border: #c3e6cb;
+            --button-primary: #27ae60;
+            --button-primary-hover: #219653;
+            --button-danger: #e74c3c;
+            --button-danger-hover: #c0392b;
+            --button-warning: #f39c12;
+            --button-warning-hover: #d35400;
+            --button-secondary: #3498db;
+            --button-secondary-hover: #2980b9;
+            --ida-color: #ff9800;
+            --volta-color: #9c27b0;
+            --furo-color: #f44336;
+            --ausencia-color: #212121;
+            --history-border: #eee;
+            --notification-bg: #333;
+            --notification-color: white;
+        }
+
+        .dark-mode {
+            --bg-color: #1a1a1a;
+            --container-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --header-color: #bb86fc;
+            --summary-bg: #3d3d3d;
+            --summary-header: #03dac6;
+            --day-bg: #3d3d3d;
+            --day-border: #555;
+            --day-hover: #4d4d4d;
+            --selected-bg: #00695c;
+            --selected-border: #004d40;
+            --button-primary: #03dac6;
+            --button-primary-hover: #00c4b4;
+            --button-danger: #cf6679;
+            --button-danger-hover: #b45566;
+            --button-warning: #ffb74d;
+            --button-warning-hover: #ffa726;
+            --button-secondary: #6200ee;
+            --button-secondary-hover: #3700b3;
+            --ida-color: #ff9800;
+            --volta-color: #9c27b0;
+            --furo-color: #f44336;
+            --ausencia-color: #bdbdbd;
+            --history-border: #444;
+            --notification-bg: #e0e0e0;
+            --notification-color: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            padding: 10px;
+            color: var(--text-color);
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background-color: var(--container-bg);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        h1 {
+            color: var(--header-color);
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .theme-toggle {
+            background-color: var(--button-secondary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .theme-toggle:hover {
+            background-color: var(--button-secondary-hover);
+        }
+        
+        .summary {
+            background-color: var(--summary-bg);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .summary h2 {
+            color: var(--summary-header);
+            margin-bottom: 8px;
+            font-size: 1.2rem;
+        }
+        
+        .summary p {
+            font-size: 1rem;
+            margin: 4px 0;
+        }
+        
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* Só dias úteis */
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 8px 5px;
+            background-color: var(--button-secondary);
+            color: white;
+            border-radius: 5px;
+            font-size: 0.8rem;
+        }
+        
+        .day {
+            background-color: var(--day-bg);
+            border: 1px solid var(--day-border);
+            border-radius: 5px;
+            padding: 8px 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 85px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .day:hover {
+            background-color: var(--day-hover);
+        }
+        
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 3px;
+            font-size: 0.9rem;
+        }
+        
+        .ride-labels {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .ride-label {
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .ride-label.ida {
+            background-color: var(--ida-color);
+            color: white;
+        }
+        
+        .ride-label.volta {
+            background-color: var(--volta-color);
+            color: white;
+        }
+        
+        .ride-label.furo {
+            background-color: var(--furo-color);
+            color: white;
+        }
+        
+        .ride-label.ausencia {
+            background-color: var(--ausencia-color);
+            color: white;
+        }
+        
+        .selected {
+            background-color: var(--selected-bg);
+            border-color: var(--selected-border);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            padding: 10px 8px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            font-size: 0.85rem;
+        }
+        
+        .action-btn {
+            padding: 12px 8px;
+            font-size: 0.9rem;
+        }
+        
+        .ida-btn {
+            background-color: var(--ida-color);
+            color: white;
+        }
+        
+        .ida-btn:hover {
+            background-color: #e68900;
+        }
+        
+        .volta-btn {
+            background-color: var(--volta-color);
+            color: white;
+        }
+        
+        .volta-btn:hover {
+            background-color: #7b1fa2;
+        }
+        
+        .furo-btn {
+            background-color: var(--furo-color);
+            color: white;
+        }
+        
+        .furo-btn:hover {
+            background-color: #d32f2f;
+        }
+        
+        .ausencia-btn {
+            background-color: var(--ausencia-color);
+            color: white;
+        }
+        
+        .ausencia-btn:hover {
+            background-color: #000;
+        }
+        
+        #removeRide {
+            background-color: var(--button-danger);
+            color: white;
+        }
+        
+        #removeRide:hover {
+            background-color: var(--button-danger-hover);
+        }
+        
+        #resetMonth {
+            background-color: var(--button-warning);
+            color: white;
+        }
+        
+        #resetMonth:hover {
+            background-color: var(--button-warning-hover);
+        }
+        
+        .history {
+            margin-top: 15px;
+        }
+        
+        .history h2 {
+            color: var(--header-color);
+            margin-bottom: 8px;
+            font-size: 1.2rem;
+        }
+        
+        #rideHistory {
+            list-style-type: none;
+        }
+        
+        #rideHistory li {
+            padding: 8px;
+            border-bottom: 1px solid var(--history-border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+        
+        .empty-day {
+            background-color: var(--day-bg);
+            border: 1px dashed var(--day-border);
+        }
+        
+        .month-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .month-navigation button {
+            background-color: var(--button-secondary);
+            color: white;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+        }
+        
+        .month-navigation button:hover {
+            background-color: var(--button-secondary-hover);
+        }
+        
+        .current-month {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--header-color);
+            text-align: center;
+            margin: 5px 0;
+        }
+        
+        .selected-day-info {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: var(--header-color);
+            min-height: 20px;
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--notification-bg);
+            color: var(--notification-color);
+            padding: 12px 20px;
+            border-radius: 5px;
+            z-index: 1002;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .notification.show {
+            opacity: 1;
+        }
+        
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .container {
+                max-width: 800px;
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 0;
+            }
+            
+            .summary {
+                padding: 15px;
+            }
+            
+            .summary h2 {
+                font-size: 1.5rem;
+            }
+            
+            .summary p {
+                font-size: 1.2rem;
+            }
+            
+            .calendar {
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+            
+            .day-header {
+                padding: 10px;
+                font-size: 1rem;
+            }
+            
+            .day {
+                padding: 10px;
+                min-height: 100px;
+            }
+            
+            .day-number {
+                font-size: 1rem;
+            }
+            
+            .ride-label {
+                font-size: 0.8rem;
+                padding: 3px 6px;
+            }
+            
+            .controls, .action-buttons {
+                gap: 10px;
+            }
+            
+            button {
+                padding: 10px 15px;
+                font-size: 1rem;
+            }
+            
+            .action-btn {
+                padding: 15px;
+                font-size: 1rem;
+            }
+            
+            .month-navigation button {
+                padding: 10px 15px;
+                font-size: 1rem;
+            }
+            
+            .current-month {
+                font-size: 1.5rem;
+            }
+            
+            .history h2 {
+                font-size: 1.5rem;
+            }
+            
+            #rideHistory li {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .day {
+                min-height: 70px;
+                padding: 5px 3px;
+            }
+            
+            .day-number {
+                font-size: 0.8rem;
+            }
+            
+            .ride-label {
+                font-size: 0.6rem;
+                padding: 1px 2px;
+            }
+            
+            .controls, .action-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .month-navigation {
+                flex-direction: column;
+            }
+            
+            .month-navigation button {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            
+            .action-btn {
+                padding: 10px;
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (display-mode: standalone) {
+            body {
+                padding-top: env(safe-area-inset-top);
+            }
+        }
+        
+        .install-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Controle de Caronas</h1>
+            <button class="theme-toggle" id="themeToggle">Modo Noturno</button>
+            <button class="install-btn" id="installButton" style="display:none">Instalar App</button>
+        </div>
+        
+        <div class="summary">
+            <h2>Resumo do Mês</h2>
+            <p>Total de caronas: <span id="totalRides">0</span></p>
+            <p>Valor devido: R$ <span id="totalValue">0,00</span></p>
+            <p>Furos: <span id="totalFuros">0</span> | Ausências: <span id="totalAusencias">0</span></p>
+        </div>
+        
+        <div class="month-navigation">
+            <button id="prevMonth">&larr; Mês Anterior</button>
+            <div class="current-month" id="currentMonth"></div>
+            <button id="nextMonth">Próximo Mês &rarr;</button>
+        </div>
+        
+        <div class="selected-day-info" id="selectedDayInfo">
+            <!-- Informações do dia selecionado aparecerão aqui -->
+        </div>
+        
+        <div class="calendar" id="calendar">
+            <!-- Os dias serão gerados dinamicamente via JavaScript -->
+        </div>
+        
+        <div class="action-buttons">
+            <button class="action-btn ida-btn" id="addIda">Adicionar Ida</button>
+            <button class="action-btn volta-btn" id="addVolta">Adicionar Volta</button>
+            <button class="action-btn furo-btn" id="addFuroIda">Furo na Ida</button>
+            <button class="action-btn furo-btn" id="addFuroVolta">Furo na Volta</button>
+            <button class="action-btn ausencia-btn" id="addAusenciaIda">Ausência na Ida</button>
+            <button class="action-btn ausencia-btn" id="addAusenciaVolta">Ausência na Volta</button>
+        </div>
+        
+        <div class="controls">
+            <button id="removeRide">Remover do Dia</button>
+            <button id="resetMonth">Reiniciar Mês</button>
+        </div>
+        
+        <div class="history">
+            <h2>Histórico de Caronas</h2>
+            <ul id="rideHistory"></ul>
+        </div>
+    </div>
+
+    <!-- Notificação -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+
+      if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(registration => console.log('SW registered'))
+                .catch(error => console.log('SW registration failed'));
+        }
+
+        // Instalação PWA
+        let deferredPrompt;
+        const installButton = document.getElementById('installButton');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installButton.style.display = 'block';
+        });
+
+        installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installButton.style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+        });
+
+    // Variáveis globais
+    let currentDate = new Date();
+    let selectedDay = null;
+    const ridePrice = 5.00;
+    let darkMode = false;
+    window.ridesCache = {};
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verifica se há preferência de tema salva
+            const savedTheme = localStorage.getItem('darkMode');
+            if (savedTheme === 'true') {
+                darkMode = true;
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeToggle').textContent = 'Modo Claro';
+            }
+            updateAll();
+            // Event listeners
+            document.getElementById('prevMonth').addEventListener('click', async () => { currentDate.setMonth(currentDate.getMonth() - 1); selectedDay = null; await updateAll(); });
+            document.getElementById('nextMonth').addEventListener('click', async () => { currentDate.setMonth(currentDate.getMonth() + 1); selectedDay = null; await updateAll(); });
+            document.getElementById('removeRide').addEventListener('click', async () => { await removeRide(); });
+            document.getElementById('resetMonth').addEventListener('click', async () => { await resetMonth(); });
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            document.getElementById('addIda').addEventListener('click', async () => await addRide('ida', 'normal'));
+            document.getElementById('addVolta').addEventListener('click', async () => await addRide('volta', 'normal'));
+            document.getElementById('addFuroIda').addEventListener('click', async () => await addRide('ida', 'furo'));
+            document.getElementById('addFuroVolta').addEventListener('click', async () => await addRide('volta', 'furo'));
+            document.getElementById('addAusenciaIda').addEventListener('click', async () => await addRide('ida', 'ausencia'));
+            document.getElementById('addAusenciaVolta').addEventListener('click', async () => await addRide('volta', 'ausencia'));
+        });
+
+        async function updateAll() {
+            await loadMonthData();
+            updateCalendar();
+            updateSummary();
+            updateHistory();
+            updateSelectedDayInfo();
+        }
+        
+        // Alternar modo noturno
+        function toggleTheme() {
+            darkMode = !darkMode;
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeToggle').textContent = 'Modo Claro';
+            } else {
+                document.body.classList.remove('dark-mode');
+                document.getElementById('themeToggle').textContent = 'Modo Noturno';
+            }
+            localStorage.setItem('darkMode', darkMode);
+        }
+        
+        // Navegação do calendário
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            selectedDay = null;
+            updateSelectedDayInfo();
+            updateCalendar();
+            updateSummary();
+            updateHistory();
+        }
+        
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            selectedDay = null;
+            updateSelectedDayInfo();
+            updateCalendar();
+            updateSummary();
+            updateHistory();
+        }
+        
+        // Atualiza o calendário
+        function updateCalendar() {
+            const calendar = document.getElementById('calendar');
+            const currentMonthElement = document.getElementById('currentMonth');
+            
+            // Limpa o calendário
+            calendar.innerHTML = '';
+            
+            // Define o mês atual no cabeçalho
+            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            currentMonthElement.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            
+            // Adiciona cabeçalhos dos dias úteis
+            const dayNames = ["Seg", "Ter", "Qua", "Qui", "Sex"];
+            dayNames.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.textContent = day;
+                calendar.appendChild(dayHeader);
+            });
+
+            // Obtém o primeiro dia do mês e o último dia do mês
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+            // Descobre o primeiro dia útil (segunda)
+            let dayOfWeek = firstDay.getDay();
+            let offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=Domingo, 1=Segunda...
+            for (let i = 0; i < offset; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'day empty-day';
+                calendar.appendChild(emptyDay);
+            }
+
+            // Adiciona só dias úteis
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                const weekDay = date.getDay();
+                if (weekDay === 0 || weekDay === 6) continue; // pula domingo(0) e sábado(6)
+
+                const dayElement = document.createElement('div');
+                dayElement.className = 'day';
+                dayElement.dataset.day = day;
+
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = day;
+                dayElement.appendChild(dayNumber);
+
+                const rideLabels = document.createElement('div');
+                rideLabels.className = 'ride-labels';
+                dayElement.appendChild(rideLabels);
+
+                const dateKey = formatDateKey(date);
+                const rides = getRidesForDate(dateKey);
+
+                if (rides.ida === 'normal') {
+                    const idaLabel = document.createElement('div');
+                    idaLabel.className = 'ride-label ida';
+                    idaLabel.textContent = 'Ida';
+                    rideLabels.appendChild(idaLabel);
+                } else if (rides.ida === 'furo') {
+                    const furoLabel = document.createElement('div');
+                    furoLabel.className = 'ride-label furo';
+                    furoLabel.textContent = 'Furo Ida';
+                    rideLabels.appendChild(furoLabel);
+                } else if (rides.ida === 'ausencia') {
+                    const ausenciaLabel = document.createElement('div');
+                    ausenciaLabel.className = 'ride-label ausencia';
+                    ausenciaLabel.textContent = 'Ausência Ida';
+                    rideLabels.appendChild(ausenciaLabel);
+                }
+
+                if (rides.volta === 'normal') {
+                    const voltaLabel = document.createElement('div');
+                    voltaLabel.className = 'ride-label volta';
+                    voltaLabel.textContent = 'Volta';
+                    rideLabels.appendChild(voltaLabel);
+                } else if (rides.volta === 'furo') {
+                    const furoLabel = document.createElement('div');
+                    furoLabel.className = 'ride-label furo';
+                    furoLabel.textContent = 'Furo Volta';
+                    rideLabels.appendChild(furoLabel);
+                } else if (rides.volta === 'ausencia') {
+                    const ausenciaLabel = document.createElement('div');
+                    ausenciaLabel.className = 'ride-label ausencia';
+                    ausenciaLabel.textContent = 'Ausência Volta';
+                    rideLabels.appendChild(ausenciaLabel);
+                }
+
+                // Seleção
+                if (selectedDay === day) {
+                    dayElement.classList.add('selected');
+                }
+
+                dayElement.addEventListener('click', function() {
+                    selectDay(dayElement);
+                });
+
+                calendar.appendChild(dayElement);
+            }
+        }
+        
+        // Seleciona um dia
+        function selectDay(dayElement) {
+            // Remove a seleção anterior
+            const previouslySelected = document.querySelector('.day.selected');
+            if (previouslySelected) {
+                previouslySelected.classList.remove('selected');
+            }
+            
+            // Seleciona o novo dia
+            dayElement.classList.add('selected');
+            selectedDay = parseInt(dayElement.dataset.day);
+            
+            updateSelectedDayInfo();
+            showNotification('Dia ' + selectedDay + ' selecionado');
+        }
+        
+        // Atualiza a informação do dia selecionado
+        function updateSelectedDayInfo() {
+            const infoElement = document.getElementById('selectedDayInfo');
+            
+            if (!selectedDay) {
+                infoElement.textContent = 'Selecione um dia no calendário';
+                return;
+            }
+            
+            const dateKey = formatDateKey(new Date(currentDate.getFullYear(), currentDate.getMonth(), selectedDay));
+            const rides = getRidesForDate(dateKey);
+            
+            let infoText = `Dia ${selectedDay} selecionado - `;
+            
+            if (!rides.ida && !rides.volta) {
+                infoText += 'Sem caronas registradas';
+            } else {
+                const parts = [];
+                if (rides.ida === 'normal') parts.push('Ida ✓');
+                if (rides.ida === 'furo') parts.push('Furo na Ida');
+                if (rides.ida === 'ausencia') parts.push('Ausência na Ida');
+                
+                if (rides.volta === 'normal') parts.push('Volta ✓');
+                if (rides.volta === 'furo') parts.push('Furo na Volta');
+                if (rides.volta === 'ausencia') parts.push('Ausência na Volta');
+                
+                infoText += parts.join(' | ');
+            }
+            
+            infoElement.textContent = infoText;
+        }
+        
+        // Mostra notificação
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        }
+        
+        // Adiciona uma carona
+        async function addRide(trajeto, tipo) {
+            if (!selectedDay) { showNotification('Selecione um dia primeiro'); return; }
+            const dateKey = formatDateKey(new Date(currentDate.getFullYear(), currentDate.getMonth(), selectedDay));
+            const rides = getRidesForDate(dateKey);
+            rides[trajeto] = tipo;
+            await saveRidesForDate(dateKey, rides);
+            await loadMonthData();
+            updateCalendar();
+            updateSummary();
+            updateHistory();
+            updateSelectedDayInfo();
+            const trajetoText = trajeto === 'ida' ? 'Ida' : 'Volta';
+            const tipoText = tipo === 'normal' ? 'adicionada' : tipo === 'furo' ? 'marcada como furo' : 'marcada como ausência';
+            showNotification(`${trajetoText} ${tipoText} no dia ${selectedDay}`);
+        }
+        
+        // Remove uma carona
+        async function removeRide() {
+            if (!selectedDay) { showNotification('Selecione um dia primeiro'); return; }
+            const dateKey = formatDateKey(new Date(currentDate.getFullYear(), currentDate.getMonth(), selectedDay));
+            const rides = getRidesForDate(dateKey);
+            if (!rides.ida && !rides.volta) { showNotification('Não há caronas para remover neste dia'); return; }
+            rides.ida = null;
+            rides.volta = null;
+            await saveRidesForDate(dateKey, rides);
+            await loadMonthData();
+            updateCalendar();
+            updateSummary();
+            updateHistory();
+            updateSelectedDayInfo();
+            showNotification('Caronas removidas do dia ' + selectedDay);
+        }
+        
+        // Reinicia o mês atual
+        async function resetMonth() {
+            const monthKey = formatMonthKey(currentDate);
+            await db.collection('caronas').doc(userId).collection('meses').doc(monthKey).delete();
+            selectedDay = null;
+            await loadMonthData();
+            updateSelectedDayInfo();
+            updateCalendar();
+            updateSummary();
+            updateHistory();
+            showNotification('Mês reiniciado com sucesso!');
+        }
+        
+        // Atualiza o resumo
+        function updateSummary() {
+            const ridesData = window.ridesCache || {};
+            let totalRides = 0;
+            let totalValue = 0;
+            let totalFuros = 0;
+            let totalAusencias = 0;
+            Object.keys(ridesData).forEach(dateKey => {
+                const date = new Date(dateKey);
+                const weekDay = date.getDay();
+                if (weekDay === 0 || weekDay === 6) return;
+                const rides = ridesData[dateKey];
+                if (rides.ida === 'normal') totalRides++;
+                if (rides.volta === 'normal') totalRides++;
+                if (rides.ida === 'furo') totalFuros++;
+                if (rides.volta === 'furo') totalFuros++;
+                if (rides.ida === 'ausencia') totalAusencias++;
+                if (rides.volta === 'ausencia') totalAusencias++;
+            });
+            totalValue = totalRides * ridePrice;
+            document.getElementById('totalRides').textContent = totalRides;
+            document.getElementById('totalValue').textContent = totalValue.toFixed(2);
+            document.getElementById('totalFuros').textContent = totalFuros;
+            document.getElementById('totalAusencias').textContent = totalAusencias;
+        }
+        
+        // Atualiza o histórico
+        function updateHistory() {
+            const historyElement = document.getElementById('rideHistory');
+            historyElement.innerHTML = '';
+            const ridesData = window.ridesCache || {};
+            const sortedDates = Object.keys(ridesData).sort();
+            if (sortedDates.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'Nenhuma carona registrada este mês.';
+                historyElement.appendChild(li);
+                return;
+            }
+            sortedDates.forEach(dateKey => {
+                const date = new Date(dateKey);
+                const weekDay = date.getDay();
+                if (weekDay === 0 || weekDay === 6) return;
+                const rides = ridesData[dateKey];
+                if (rides.ida || rides.volta) {
+                    const li = document.createElement('li');
+                    const formattedDate = date.toLocaleDateString('pt-BR');
+                    let rideTypes = [];
+                    let value = 0;
+                    if (rides.ida === 'normal') { rideTypes.push('Ida'); value += ridePrice; }
+                    else if (rides.ida === 'furo') rideTypes.push('Furo Ida');
+                    else if (rides.ida === 'ausencia') rideTypes.push('Ausência Ida');
+                    if (rides.volta === 'normal') { rideTypes.push('Volta'); value += ridePrice; }
+                    else if (rides.volta === 'furo') rideTypes.push('Furo Volta');
+                    else if (rides.volta === 'ausencia') rideTypes.push('Ausência Volta');
+                    li.innerHTML = `
+                        <span>${formattedDate}</span>
+                        <span>${rideTypes.join(' e ')}</span>
+                        <span>R$ ${value.toFixed(2)}</span>
+                    `;
+                    historyElement.appendChild(li);
+                }
+            });
+        }
+        
+        // Funções auxiliares para armazenamento
+        function formatDateKey(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function formatMonthKey(date) {
+            return `rides-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getRidesForDate(dateKey) {
+            return window.ridesCache?.[dateKey] || { ida: null, volta: null };
+        }
+
+        async function saveRidesForDate(dateKey, rides) {
+            const monthKey = formatMonthKey(currentDate);
+            const docRef = db.collection('caronas').doc(userId).collection('meses').doc(monthKey);
+            let ridesData = {};
+            const doc = await docRef.get();
+            if (doc.exists) ridesData = doc.data();
+            ridesData[dateKey] = rides;
+            await docRef.set(ridesData);
+        }
+
+        async function loadMonthData() {
+            const monthKey = formatMonthKey(currentDate);
+            const docRef = db.collection('caronas').doc(userId).collection('meses').doc(monthKey);
+            const doc = await docRef.get();
+            window.ridesCache = doc.exists ? doc.data() : {};
+        }
+    </script>
+</body>
+</html>
