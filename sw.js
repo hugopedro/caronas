@@ -1,10 +1,10 @@
 const CACHE_NAME = 'caronas-v1';
 const ASSETS_TO_CACHE = [
-  '/caronas/',
-  '/caronas/index.html',
-  '/caronas/manifest.json',
-  '/caronas/icon-192.png',
-  '/caronas/icon-512.png'
+  '.',
+  'index.html',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
