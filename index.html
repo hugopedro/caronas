@@ -2,24 +2,22 @@
 <html lang="pt-BR">
 <head>
         <!-- Supabase -->
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.2"></script>
+        <script src="https://unpkg.com/@supabase/supabase-js@2.38.2/dist/umd/supabase.min.js"></script>
         <script>
-            let supabaseClient;
-
-            async function initializeSupabase() {
-                if (!supabaseClient) {
-                    const supabaseUrl = 'https://acyxzqbcvbhhoadxwfhj.supabase.co';
-                    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjeXh6cWJjdmJoaG9hZHh3ZmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5Mjg2NTIsImV4cCI6MjA3NDUwNDY1Mn0.37vQ-Jc6fHXl2EoAublmCYKK3Y96nRR7dcZrck9rkEQ';
-                    try {
-                        supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-                        console.log('Supabase initialized successfully');
-                    } catch (error) {
-                        console.error('Error initializing Supabase:', error);
-                        throw error;
-                    }
-                }
-                return supabaseClient;
+            // Register service worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => console.log('Service Worker registered successfully:', registration))
+                    .catch(error => console.error('Service Worker registration failed:', error));
             }
+            
+            // Initialize Supabase
+            window.addEventListener('load', function() {
+                const supabaseUrl = 'https://acyxzqbcvbhhoadxwfhj.supabase.co';
+                const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjeXh6cWJjdmJoaG9hZHh3ZmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5Mjg2NTIsImV4cCI6MjA3NDUwNDY1Mn0.37vQ-Jc6fHXl2EoAublmCYKK3Y96nRR7dcZrck9rkEQ';
+                window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+                console.log('Supabase initialized');
+            });
             
             // Usuário único, sem autenticação
             const userId = "meu_unico_usuario";
@@ -629,8 +627,14 @@
         // Inicialização
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                // Initialize Supabase first
-                await initializeSupabase();
+                // Wait for Supabase to initialize
+                await new Promise(resolve => {
+                    if (window.supabaseClient) {
+                        resolve();
+                    } else {
+                        window.addEventListener('load', resolve);
+                    }
+                });
                 
                 // Verifica se há preferência de tema salva
                 const savedTheme = localStorage.getItem('darkMode');
@@ -1017,11 +1021,10 @@
 
         async function saveRidesForDate(dateKey, rides) {
             try {
-                const client = await initializeSupabase();
                 const monthKey = formatMonthKey(currentDate);
                 
                 // Buscar dados existentes primeiro
-                const { data: existingData, error: selectError } = await client
+                const { data: existingData, error: selectError } = await window.supabaseClient
                     .from('caronas')
                     .select('rides_data')
                     .eq('user_id', userId)
@@ -1037,7 +1040,7 @@
                 ridesData[dateKey] = rides;
                 
                 // Atualizar ou inserir dados
-                const { error: upsertError } = await client
+                const { error: upsertError } = await window.supabaseClient
                     .from('caronas')
                     .upsert({
                         user_id: userId,
@@ -1057,11 +1060,10 @@
 
         async function loadMonthData() {
             try {
-                const client = await initializeSupabase();
                 const monthKey = formatMonthKey(currentDate);
                 console.log('Loading month data for:', monthKey);
                 
-                const { data, error } = await client
+                const { data, error } = await window.supabaseClient
                     .from('caronas')
                     .select('rides_data')
                     .eq('user_id', userId)
@@ -1084,10 +1086,9 @@
         // Reinicia o mês atual
         async function resetMonth() {
             try {
-                const client = await initializeSupabase();
                 const monthKey = formatMonthKey(currentDate);
                 
-                const { error } = await client
+                const { error } = await window.supabaseClient
                     .from('caronas')
                     .delete()
                     .eq('user_id', userId)
