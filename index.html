@@ -15,6 +15,7 @@
             window.addEventListener('load', function() {
                 const supabaseUrl = 'https://acyxzqbcvbhhoadxwfhj.supabase.co';
                 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjeXh6cWJjdmJoaG9hZHh3ZmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5Mjg2NTIsImV4cCI6MjA3NDUwNDY1Mn0.37vQ-Jc6fHXl2EoAublmCYKK3Y96nRR7dcZrck9rkEQ';
+                const supabase = createClient(supabaseUrl, supabaseKey)
                 window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
                 console.log('Supabase initialized');
             });
@@ -589,6 +590,8 @@
     <div class="notification" id="notification"></div>
 
         <script>
+          import { createClient } from '@supabase/supabase-js'
+
             // Register service worker
             if ('serviceWorker' in navigator) {
                 try {
@@ -1022,6 +1025,7 @@
         async function saveRidesForDate(dateKey, rides) {
             try {
                 const monthKey = formatMonthKey(currentDate);
+                console.log('Saving rides for:', { dateKey, monthKey, rides });
                 
                 // Buscar dados existentes primeiro
                 const { data: existingData, error: selectError } = await window.supabaseClient
@@ -1030,6 +1034,8 @@
                     .eq('user_id', userId)
                     .eq('month_key', monthKey)
                     .single();
+                
+                console.log('Existing data:', existingData, 'Select error:', selectError);
                 
                 if (selectError && selectError.code !== 'PGRST116') {
                     console.error('Erro ao buscar dados:', selectError);
