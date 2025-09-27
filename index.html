@@ -2,12 +2,24 @@
 <html lang="pt-BR">
 <head>
         <!-- Supabase -->
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.2/dist/umd/supabase.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.2"></script>
         <script>
-            // Inicialização do Supabase
-            const supabaseUrl = 'https://acyxzqbcvbhhoadxwfhj.supabase.co';
-            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjeXh6cWJjdmJoaG9hZHh3ZmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5Mjg2NTIsImV4cCI6MjA3NDUwNDY1Mn0.37vQ-Jc6fHXl2EoAublmCYKK3Y96nRR7dcZrck9rkEQ';
-            const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+            let supabaseClient;
+
+            async function initializeSupabase() {
+                if (!supabaseClient) {
+                    const supabaseUrl = 'https://acyxzqbcvbhhoadxwfhj.supabase.co';
+                    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjeXh6cWJjdmJoaG9hZHh3ZmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5Mjg2NTIsImV4cCI6MjA3NDUwNDY1Mn0.37vQ-Jc6fHXl2EoAublmCYKK3Y96nRR7dcZrck9rkEQ';
+                    try {
+                        supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+                        console.log('Supabase initialized successfully');
+                    } catch (error) {
+                        console.error('Error initializing Supabase:', error);
+                        throw error;
+                    }
+                }
+                return supabaseClient;
+            }
             
             // Usuário único, sem autenticação
             const userId = "meu_unico_usuario";
@@ -579,10 +591,14 @@
     <div class="notification" id="notification"></div>
 
         <script>
+            // Register service worker
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js')
-                    .then(registration => console.log('SW registered'))
-                    .catch(error => console.log('SW registration failed'));
+                try {
+                    const registration = await navigator.serviceWorker.register('sw.js');
+                    console.log('Service Worker registered successfully:', registration);
+                } catch (error) {
+                    console.error('Service Worker registration failed:', error);
+                }
             }
 
             // Instalação PWA
@@ -611,27 +627,55 @@
     window.ridesCache = {};
         
         // Inicialização
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verifica se há preferência de tema salva
-            const savedTheme = localStorage.getItem('darkMode');
-            if (savedTheme === 'true') {
-                darkMode = true;
-                document.body.classList.add('dark-mode');
-                document.getElementById('themeToggle').textContent = 'Modo Claro';
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Initialize Supabase first
+                await initializeSupabase();
+                
+                // Verifica se há preferência de tema salva
+                const savedTheme = localStorage.getItem('darkMode');
+                if (savedTheme === 'true') {
+                    darkMode = true;
+                    document.body.classList.add('dark-mode');
+                    document.getElementById('themeToggle').textContent = 'Modo Claro';
+                }
+                
+                await updateAll();
+                
+                // Event listeners
+                document.getElementById('prevMonth').addEventListener('click', async () => {
+                    currentDate.setMonth(currentDate.getMonth() - 1);
+                    selectedDay = null;
+                    await updateAll();
+                });
+                
+                document.getElementById('nextMonth').addEventListener('click', async () => {
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                    selectedDay = null;
+                    await updateAll();
+                });
+                
+                document.getElementById('removeRide').addEventListener('click', async () => {
+                    await removeRide();
+                });
+                
+                document.getElementById('resetMonth').addEventListener('click', async () => {
+                    await resetMonth();
+                });
+                
+                document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+                document.getElementById('addIda').addEventListener('click', async () => await addRide('ida', 'normal'));
+                document.getElementById('addVolta').addEventListener('click', async () => await addRide('volta', 'normal'));
+                document.getElementById('addFuroIda').addEventListener('click', async () => await addRide('ida', 'furo'));
+                document.getElementById('addFuroVolta').addEventListener('click', async () => await addRide('volta', 'furo'));
+                document.getElementById('addAusenciaIda').addEventListener('click', async () => await addRide('ida', 'ausencia'));
+                document.getElementById('addAusenciaVolta').addEventListener('click', async () => await addRide('volta', 'ausencia'));
+                
+                console.log('Initialization completed successfully');
+            } catch (err) {
+                console.error('Error during initialization:', err);
+                showNotification('Erro ao inicializar o aplicativo');
             }
-            updateAll();
-            // Event listeners
-            document.getElementById('prevMonth').addEventListener('click', async () => { currentDate.setMonth(currentDate.getMonth() - 1); selectedDay = null; await updateAll(); });
-            document.getElementById('nextMonth').addEventListener('click', async () => { currentDate.setMonth(currentDate.getMonth() + 1); selectedDay = null; await updateAll(); });
-            document.getElementById('removeRide').addEventListener('click', async () => { await removeRide(); });
-            document.getElementById('resetMonth').addEventListener('click', async () => { await resetMonth(); });
-            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-            document.getElementById('addIda').addEventListener('click', async () => await addRide('ida', 'normal'));
-            document.getElementById('addVolta').addEventListener('click', async () => await addRide('volta', 'normal'));
-            document.getElementById('addFuroIda').addEventListener('click', async () => await addRide('ida', 'furo'));
-            document.getElementById('addFuroVolta').addEventListener('click', async () => await addRide('volta', 'furo'));
-            document.getElementById('addAusenciaIda').addEventListener('click', async () => await addRide('ida', 'ausencia'));
-            document.getElementById('addAusenciaVolta').addEventListener('click', async () => await addRide('volta', 'ausencia'));
         });
 
         async function updateAll() {
@@ -972,49 +1016,65 @@
         }
 
         async function saveRidesForDate(dateKey, rides) {
-            const monthKey = formatMonthKey(currentDate);
-            // Buscar dados existentes primeiro
-            const { data: existingData } = await supabaseClient
-                .from('caronas')
-                .select('rides_data')
-                .eq('user_id', userId)
-                .eq('month_key', monthKey)
-                .single();
-            
-            let ridesData = existingData?.rides_data || {};
-            ridesData[dateKey] = rides;
-            
-            // Atualizar ou inserir dados
-            const { error } = await supabaseClient
-                .from('caronas')
-                .upsert({
-                    user_id: userId,
-                    month_key: monthKey,
-                    rides_data: ridesData
-                });
+            try {
+                const client = await initializeSupabase();
+                const monthKey = formatMonthKey(currentDate);
                 
-            if (error) {
-                console.error('Erro ao salvar dados:', error);
-                throw error;
+                // Buscar dados existentes primeiro
+                const { data: existingData, error: selectError } = await client
+                    .from('caronas')
+                    .select('rides_data')
+                    .eq('user_id', userId)
+                    .eq('month_key', monthKey)
+                    .single();
+                
+                if (selectError && selectError.code !== 'PGRST116') {
+                    console.error('Erro ao buscar dados:', selectError);
+                    throw selectError;
+                }
+                
+                let ridesData = existingData?.rides_data || {};
+                ridesData[dateKey] = rides;
+                
+                // Atualizar ou inserir dados
+                const { error: upsertError } = await client
+                    .from('caronas')
+                    .upsert({
+                        user_id: userId,
+                        month_key: monthKey,
+                        rides_data: ridesData
+                    });
+                    
+                if (upsertError) {
+                    console.error('Erro ao salvar dados:', upsertError);
+                    throw upsertError;
+                }
+            } catch (err) {
+                console.error('Erro ao salvar carona:', err);
+                showNotification('Erro ao salvar dados');
             }
         }
 
         async function loadMonthData() {
             try {
+                const client = await initializeSupabase();
                 const monthKey = formatMonthKey(currentDate);
-                const { data, error } = await supabaseClient
+                console.log('Loading month data for:', monthKey);
+                
+                const { data, error } = await client
                     .from('caronas')
                     .select('rides_data')
                     .eq('user_id', userId)
                     .eq('month_key', monthKey)
                     .single();
                     
-                if (error && error.code !== 'PGRST116') { // Código para "não encontrado"
+                if (error && error.code !== 'PGRST116') {
                     console.error('Erro ao carregar dados:', error);
                     throw error;
                 }
                 
                 window.ridesCache = data?.rides_data || {};
+                console.log('Loaded rides data:', window.ridesCache);
             } catch (err) {
                 console.error('Erro ao carregar dados do mês:', err);
                 window.ridesCache = {};
@@ -1024,12 +1084,31 @@
         // Reinicia o mês atual
         async function resetMonth() {
             try {
+                const client = await initializeSupabase();
                 const monthKey = formatMonthKey(currentDate);
-                const { error } = await supabaseClient
+                
+                const { error } = await client
                     .from('caronas')
                     .delete()
                     .eq('user_id', userId)
                     .eq('month_key', monthKey);
+                    
+                if (error) {
+                    console.error('Erro ao reiniciar mês:', error);
+                    throw error;
+                }
+                
+                selectedDay = null;
+                await loadMonthData();
+                updateSelectedDayInfo();
+                updateCalendar();
+                updateSummary();
+                updateHistory();
+                showNotification('Mês reiniciado com sucesso!');
+            } catch (err) {
+                console.error('Erro ao reiniciar mês:', err);
+                showNotification('Erro ao reiniciar mês');
+            }
                     
                 if (error) {
                     console.error('Erro ao reiniciar mês:', error);
